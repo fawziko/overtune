@@ -30,7 +30,7 @@ permissions:
 jobs:
   build-unsigned-ipa:
     name: Build & Package Unsigned IPA
-    runs-on: macos-15
+    runs-on: macos-26
     defaults:
       run:
         working-directory: mobile
@@ -39,17 +39,30 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🍏 Select Xcode
+      - name: 🍏 Select Xcode 26 (Swift 6.2+)
         run: |
-          for version in 16.4 16.3 16.2 16.1; do
-            if [ -d "/Applications/Xcode_${version}.app" ]; then
-              sudo xcode-select -s "/Applications/Xcode_${version}.app"
-              echo "DEVELOPER_DIR=/Applications/Xcode_${version}.app/Contents/Developer" >> $GITHUB_ENV
+          set -e
+          SELECTED_XCODE=""
+          for version in 26.3 26.2 26.1 26.0; do
+            candidate="/Applications/Xcode_${version}.app"
+            if [ -d "$candidate" ]; then
+              SELECTED_XCODE="$candidate"
               break
             fi
           done
+
+          if [ -z "$SELECTED_XCODE" ]; then
+            echo "❌ Xcode 26 was not found on this runner."
+            echo "Installed Xcode applications:"
+            ls -d /Applications/Xcode*.app 2>/dev/null || true
+            exit 1
+          fi
+
+          sudo xcode-select -s "$SELECTED_XCODE"
+          echo "DEVELOPER_DIR=$SELECTED_XCODE/Contents/Developer" >> "$GITHUB_ENV"
           echo "Active Xcode: $(xcode-select -p)"
           xcodebuild -version
+          swift --version
 
       - name: 🟢 Setup Node.js (v20)
         uses: actions/setup-node@v4
